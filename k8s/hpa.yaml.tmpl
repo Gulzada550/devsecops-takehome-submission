@@ -1,0 +1,41 @@
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: toolset-hpa-${DEPLOY_ID}
+  namespace: devsecops
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: toolset-${DEPLOY_ID}
+  minReplicas: 1
+  maxReplicas: 5
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      policies:
+        - type: Percent
+          value: 50
+          periodSeconds: 60
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60
+
+# ================================
+# This file is part of the **second part of the assignment**.
+# It defines a Horizontal Pod Autoscaler (HPA) template for the dev environments.
+# - Targets the toolset-${DEPLOY_ID} deployment
+# - Scales pods based on CPU utilization
+# - minReplicas / maxReplicas and target CPU can be customized
+# This file is provided as a template only and is NOT deployed in this submission.
+# ================================

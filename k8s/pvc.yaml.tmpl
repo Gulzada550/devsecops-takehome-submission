@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ${APP_NAME}-pvc
+  namespace: ${NAMESPACE}
+spec:
+  accessModes: [ "ReadWriteOnce" ]
+  resources:
+    requests:
+      storage: ${PVC_SIZE}
+  storageClassName: "" # or set your storage class name
+
+
+# ================================
+# This file is part of the **second part of the assignment**.
+# It defines a PersistentVolumeClaim (PVC) template to provide persistent
+# workspace storage for user environments.
+# It can be combined with the dev-env template for per-user data volumes.
+# This file is provided as a template only and is NOT deployed in this submission.
+# ================================

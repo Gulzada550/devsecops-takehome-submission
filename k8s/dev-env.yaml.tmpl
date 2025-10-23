@@ -1,0 +1,131 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: toolset-${DEPLOY_ID}
+  namespace: devsecops
+  labels:
+    app: toolset-${DEPLOY_ID}
+    owner: ${OWNER}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: toolset-${DEPLOY_ID}
+  template:
+    metadata:
+      labels:
+        app: toolset-${DEPLOY_ID}
+        owner: ${OWNER}
+    spec:
+      initContainers:
+        - name: init-packages
+          image: ${BASE_IMAGE}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash","-lc"]
+          args:
+            - |
+              set -e
+              echo "PY3: '${PY3_PACKAGES}'"
+              echo "PY2: '${PY2_PACKAGES}'"
+              echo "R: '${R_PACKAGES}'"
+
+              to_space() { echo "$1" | tr ',' ' ' | xargs; }
+
+              if [ -n "${PY3_PACKAGES}" ]; then
+                PKGS="$(to_space "${PY3_PACKAGES}")"
+                if command -v pip3 >/dev/null 2>&1; then
+                  pip3 install --user ${PKGS} || true
+                elif [ -x /home/appuser/py3/bin/pip ]; then
+                  /home/appuser/py3/bin/pip install --user ${PKGS} || true
+                elif [ -x /opt/conda/envs/py3/bin/pip ]; then
+                  /opt/conda/envs/py3/bin/pip install --user ${PKGS} || true
+                else
+                  echo "No Python3 pip found; skipping."
+                fi
+              fi
+
+              if [ -n "${PY2_PACKAGES}" ]; then
+                PKGS="$(to_space "${PY2_PACKAGES}")"
+                if command -v pip2 >/dev/null 2>&1 && pip2 --version >/dev/null 2>&1; then
+                  pip2 install --user ${PKGS} || true
+                elif [ -x /opt/py2/bin/pip ] && /opt/py2/bin/pip --version >/dev/null 2>&1; then
+                  /opt/py2/bin/pip install --user ${PKGS} || true
+                elif [ -x /opt/conda/envs/py2/bin/pip ] && /opt/conda/envs/py2/bin/pip --version >/dev/null 2>&1; then
+                  /opt/conda/envs/py2/bin/pip install --user ${PKGS} || true
+                else
+                  echo "No working Python2 pip found; skipping."
+                fi
+              fi
+
+              if [ -n "${R_PACKAGES}" ] && command -v R >/dev/null 2>&1; then
+                export R_LIBS_USER=/home/dev/R/library
+                mkdir -p "${R_LIBS_USER}"
+                R -q -e "pkgs<-unlist(strsplit('${R_PACKAGES}',',')); if(length(pkgs)>0) install.packages(pkgs, repos='https://cloud.r-project.org', lib=Sys.getenv('R_LIBS_USER'))" || true
+              fi
+
+              mkdir -p /home/dev
+              cp -r /root/.local /home/dev/.local 2>/dev/null || true
+          volumeMounts:
+            - name: home
+              mountPath: /home/dev
+
+      containers:
+        - name: toolset
+          image: ${BASE_IMAGE}
+          imagePullPolicy: ${IMAGE_PULL_POLICY}
+          command: ["/bin/bash","-lc"]
+          args:
+            - |
+              export HOME=/home/dev
+              export PATH=/home/dev/.local/bin:$PATH
+              python3 -m http.server 8080 2>/dev/null || \
+              python  -m http.server 8080 2>/dev/null || \
+              { echo "No Python available"; tail -f /dev/null; }
+          env:
+            - name: HOME
+              value: /home/dev
+          volumeMounts:
+            - name: home
+              mountPath: /home/dev
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: ${CPU_REQUEST}
+              memory: ${MEM_REQUEST}
+            limits:
+              cpu: ${CPU_LIMIT}
+              memory: ${MEM_LIMIT}
+
+      volumes:
+        - name: home
+          emptyDir: {}
+
+      restartPolicy: Always
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: toolset-svc-${DEPLOY_ID}
+  namespace: devsecops
+  labels:
+    app: toolset-${DEPLOY_ID}
+    owner: ${OWNER}
+spec:
+  selector:
+    app: toolset-${DEPLOY_ID}
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8080
+
+# ================================
+# This file is part of the **second part of the assignment**.
+# It defines a parameterized Kubernetes Deployment + Service template that:
+# - Lets the user choose a base image
+# - Installs Python 2/3 and R packages at runtime (init container)
+# - Configures CPU/memory resources
+# - Runs a simple HTTP server on port 8080
+# - Supports multiple users via DEPLOY_ID and OWNER variables
+# This file is provided as a template only and is NOT deployed in this submission.
+# ================================

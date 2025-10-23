@@ -1,0 +1,33 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ${APP_NAME}-ing
+  namespace: ${NAMESPACE}
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    cert-manager.io/cluster-issuer: "letsencrypt"
+spec:
+  tls:
+    - hosts: [ "${APP_FQDN}" ]
+      secretName: ${APP_NAME}-tls
+  rules:
+    - host: ${APP_FQDN}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ${APP_NAME}-svc
+                port:
+                  number: 80
+
+
+# ================================
+# This file is part of the **second part of the assignment**.
+# It defines an optional Ingress resource template:
+# - Provides DNS + HTTPS routing via Ingress + cert-manager + ExternalDNS
+# - Maps the toolset service to a public hostname
+# - Optional for future use
+# This file is provided as a template only and is NOT deployed in this submission.
+# ================================

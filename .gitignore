@@ -205,3 +205,42 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+
+__pycache__/
+*.pyc
+.DS_Store
+venv/
+
+# ==========================
+# DevSecOps Project Specific
+# ==========================
+
+# Rendered manifests (generated from templates)
+rendered/*
+!rendered/.gitkeep
+
+# Trivy scan reports (already stored in artifacts)
+artifacts/*
+
+# Kubernetes local configs (if used)
+.kube/
+*.kubeconfig
+
+# Helm / Kustomize temporary output
+.chart/
+*.tgz
+
+# Docker build cache or temporary files
+docker/*.tar
+docker/.cache
+
+# Node modules (if UI added later)
+node_modules/
+
+# Logs
+*.log
+logs/
+
+# Local testing artifacts
+tmp/

@@ -1,0 +1,139 @@
+name: Provision Dev Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_image:
+        description: "Base image"
+        type: choice
+        # Important: secrets are not interpolated inside options or defaults.
+        # We use a friendly option (devsecops-mixed) and map it later to docker.io/gulzada312/devsecops-mixed:latest.
+        options:
+          - devsecops-mixed
+          - python:3.11
+          - rocker/r-ver:4.3.3
+        default: devsecops-mixed
+      py3_packages:
+        description: "Python3 packages (comma-separated)"
+        default: "boto3,numpy"
+      py2_packages:
+        description: "Python2 packages (comma-separated)"
+        default: "requests"
+      r_packages:
+        description: "R packages (comma-separated)"
+        default: "tidyverse,ggplot2"
+      cpu_request:
+        description: "CPU request"
+        default: "200m"
+      cpu_limit:
+        description: "CPU limit"
+        default: "500m"
+      mem_request:
+        description: "Memory request"
+        default: "512Mi"
+      mem_limit:
+        description: "Memory limit"
+        default: "1Gi"
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Start KinD
+        uses: helm/kind-action@v1
+        with:
+          version: v0.23.0
+          kubectl_version: v1.31.4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: v1.31.4
+
+      - name: Install envsubst
+        run: sudo apt-get update -qq && sudo apt-get install -y gettext-base
+
+      - name: Export inputs → env vars
+        shell: bash
+        run: |
+          # Map the friendly option "devsecops-mixed" to a real Docker Hub image using a secret.
+          if [ "${{ inputs.base_image }}" = "devsecops-mixed" ]; then
+            if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+              echo "ERROR: secrets.DOCKERHUB_USERNAME is not set in the repo settings." >&2
+              exit 1
+            fi
+            echo "BASE_IMAGE=docker.io/${{ secrets.DOCKERHUB_USERNAME }}/devsecops-mixed:latest" >> $GITHUB_ENV
+          else
+            echo "BASE_IMAGE=${{ inputs.base_image }}" >> $GITHUB_ENV
+          fi
+
+          echo "PY3_PACKAGES=${{ inputs.py3_packages }}"   >> $GITHUB_ENV
+          echo "PY2_PACKAGES=${{ inputs.py2_packages }}"   >> $GITHUB_ENV
+          echo "R_PACKAGES=${{ inputs.r_packages }}"       >> $GITHUB_ENV
+          echo "CPU_REQUEST=${{ inputs.cpu_request }}"     >> $GITHUB_ENV
+          echo "CPU_LIMIT=${{ inputs.cpu_limit }}"         >> $GITHUB_ENV
+          echo "MEM_REQUEST=${{ inputs.mem_request }}"     >> $GITHUB_ENV
+          echo "MEM_LIMIT=${{ inputs.mem_limit }}"         >> $GITHUB_ENV
+          echo "DEPLOY_ID=$(date +%s)"                     >> $GITHUB_ENV
+          echo "OWNER=${GITHUB_ACTOR}"                     >> $GITHUB_ENV
+
+      - name: Render manifest
+        shell: bash
+        run: |
+          kubectl create ns devsecops --dry-run=client -o yaml | kubectl apply -f -
+          envsubst < k8s/dev-env.yaml.tmpl > k8s/dev-env.rendered.yaml
+          echo "----- RENDERED (head) -----"
+          sed -n '1,120p' k8s/dev-env.rendered.yaml
+
+      - name: Apply & wait
+        shell: bash
+        run: |
+          kubectl apply -f k8s/dev-env.rendered.yaml
+          kubectl -n devsecops rollout status deployment/toolset-${DEPLOY_ID} --timeout=180s
+          kubectl -n devsecops get deploy,po,svc -l app=toolset-${DEPLOY_ID} -o wide
+
+      - name: Smoke test from inside the cluster
+        shell: bash
+        run: |
+          kubectl -n devsecops run curl --image=curlimages/curl:8.10.1 -it --rm --restart=Never \
+            -- curl -sS http://toolset-svc-${DEPLOY_ID}.devsecops.svc.cluster.local:80 | head -n 3 || true
+
+      - name: Debug:list files
+        if: always()
+        run: |
+          echo "PWD=$(pwd)"
+          echo "--- repo root ---"
+          ls -lah
+          echo "--- k8s dir ---"
+          ls -lah k8s || true
+          echo "--- head of rendered manifest ---"
+          if [ -f k8s/dev-env.rendered.yaml ]; then
+            head -n 60 k8s/dev-env.rendered.yaml
+          else
+            echo "NO rendered file at k8s/dev-env.rendered.yaml"
+          fi
+
+      - name: Upload rendered manifest
+        uses: actions/upload-artifact@v4
+        with:
+          name: dev-env-${{ env.DEPLOY_ID }}
+          path: k8s/dev-env.rendered.yaml
+          if-no-files-found: error
+
+
+
+# ================================
+# This workflow is for the **second part of the assignment**.
+# It demonstrates how an environment could be provisioned automatically:
+# - Allows selecting a base image
+# - Installs runtime packages via init containers
+# - Sets CPU and memory requests/limits
+# - Exposes a lightweight HTTP server
+# This is provided as a template/design — not executed in this submission.
+# ================================

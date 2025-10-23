@@ -1,0 +1,14 @@
+.git
+.github
+artifacts
+rendered
+docs
+k8s
+.DS_Store
+*.log
+__pycache__/
+*.pyc
+venv/
+.env
+.env.*
+docker/.cache
