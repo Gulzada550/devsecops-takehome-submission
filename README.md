@@ -12,6 +12,7 @@ Submission for DevSecOps assignment.
 - [Architecture Diagram](#-architecture-diagram)
 - [Troubleshooting](#troubleshooting)
 
+
 ## Overview
 This project implements a DevSecOps take-home assignment covering the full lifecycle:
 
@@ -104,7 +105,8 @@ Defense-in-depth for dependencies and images:
 kubectl -n devsecops get deploy,rs,svc,endpoints,pods -o wide
 kubectl -n devsecops rollout status deploy/toolset
 kubectl -n devsecops exec -it <pod> -- bash -lc \
-  'python3 --version; env LD_LIBRARY_PATH=/opt/py2/lib /opt/py2/bin/python -V; R --version | head -n1'
+  'python3 --version; env LD_LIBRARY_PATH=/opt/py2/lib /opt/py2/bin/python -V; R --version | head -n1' 
+```
 
 ---
 
@@ -137,7 +139,8 @@ Runs:
 
 Check HPA status:
 ```bash
-kubectl -n devsecops get hpa
+kubectl -n devsecops get hpa 
+```
 
  ## How to Run This Project Locally
 
@@ -165,11 +168,12 @@ For troubleshooting steps (Metrics Server, HPA targets), see [docs/TROUBLESHOOTI
 - `make deploy` — applies K8s manifests
 - `make scan` — runs Trivy scan
 
-## Link the Docker Hub image:
-
-Image: docker.io/gulzada312/devsecops-mixed:latest
+**Docker Hub Image:** [docker.io/gulzada312/devsecops-mixed:latest](https://hub.docker.com/r/gulzada312/devsecops-mixed)
 
 ## Part 2 — On-Demand Dev Environments (Design + Templates)
+
+For Part 2, I focused on providing a functional design and parameterized templates (YAML + GitHub Actions UI) rather than executing a full production deployment. This aligns with the assignment’s goal of demonstrating architectural thinking and automation strategy.
+
 
 This section provides **templates** and a **how-to** for launching per-user dev environments without requiring a full deploy demo.
 
@@ -194,7 +198,8 @@ export CPU_REQUEST=500m; export MEM_REQUEST=2Gi
 export CPU_LIMIT=2;     export MEM_LIMIT=4Gi
 mkdir -p rendered
 envsubst < k8s/dev-env.yaml.tmpl > rendered/dev-env-${DEPLOY_ID}.yaml
-# kubectl apply -f rendered/dev-env-${DEPLOY_ID}.yaml
+# kubectl apply -f rendered/dev-env-${DEPLOY_ID}.yaml 
+```
 
 
 ### Part 2 — Templates & Design (no deploy in this submission)
@@ -209,7 +214,8 @@ graph TD
   Templating --> K8s[Kubernetes Cluster]
   K8s --> DNS[ExternalDNS / Route53]
   K8s --> Monitoring[Prometheus / HPA / VPA]
-  Monitoring --> Reports[Usage Reports / Alerts] ```
+  Monitoring --> Reports[Usage Reports / Alerts] 
+  ```
 
 
 This section outlines how I would **design and implement a self-service, scalable development environment factory** on Kubernetes to meet the assignment requirements.
@@ -333,6 +339,13 @@ This design delivers a **self-service, multi-tenant dev environment factory** wi
 -  Support for high-memory scientific workloads
 
 All implemented with **standard Kubernetes building blocks**, and ready to extend into production environments.
+
+---
+
+## Final Notes
+- The first part demonstrates a complete DevSecOps flow: secure image → scan → deploy → monitor.  
+- The second part provides an extendable design for self-service dev environments.  
+- All components are reproducible locally using KinD and GitHub Actions.
 
 ---
 
