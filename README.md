@@ -30,7 +30,6 @@ This project implements a DevSecOps take-home assignment covering the full lifec
 The Docker image was built twice to measure **cold** and **warm** build performance:
 
 - **Cold build (no cache)**: `8m 55.91s`  
-  ```bash
 time docker build --no-cache -t gulzada312/devsecops-mixed .
 **Warm build (with cache)**: `4.34s`
 time docker build -t gulzada312/devsecops-mixed .
@@ -144,9 +143,11 @@ kubectl -n devsecops get hpa
 
  ## How to Run This Project Locally
 
- # Clone the repo
+# Clone the repo
+```bash
 git clone git@github.com:Gulzada550/devsecops-takehome-submission.git
 cd devsecops-takehome-submission
+```
 
 # Build image
 docker build -t local/devsecops-mixed .
