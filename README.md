@@ -345,6 +345,20 @@ This design delivers a **self-service, multi-tenant dev environment factory** wi
 
 All implemented with **standard Kubernetes building blocks**, and ready to extend into production environments.
 
+
+## Branching Strategy
+
+For this take-home project, I worked primarily on the `main` branch. Since I was the only contributor, it was practical to develop, test, and commit directly to `main` to keep the workflow simple.
+
+In a real team environment, I would follow a standard Git branching strategy to maintain code quality and avoid disruptions to production. That typically looks like:
+
+- Creating a **feature branch** for each change or new functionality  
+- Testing and validating the work within that feature branch  
+- Opening a **pull request (PR)** for code review and automated checks  
+- Merging the tested and approved changes into the `main` (production) branch
+
+This ensures clean commit history, safer deployments, and better collaboration when working in a team.
+
 ---
 
 ## Final Notes
