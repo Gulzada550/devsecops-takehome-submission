@@ -1,0 +1,38 @@
+name: cd-k8s
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'k8s/**', '.github/workflows/cd-k8s.yml' ]
+  workflow_dispatch:
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Start a fresh 1-node Kubernetes cluster
+      - name: Start KinD
+        uses: helm/kind-action@v1
+        with:
+          version: v0.23.0
+          kubectl_version: v1.31.4
+
+      - name: Setup kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'v1.31.4'
+
+      - name: Apply manifests to KinD
+        run: |
+          set -euo pipefail
+          kubectl version --client --output=yaml || kubectl version --client=true
+          kubectl apply -f k8s/namespace.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          if [ -f k8s/hpa.yaml ]; then kubectl apply -f k8s/hpa.yaml; fi
+
+      - name: Wait for rollout
+        run: |
+          kubectl -n devsecops rollout status deploy/toolset --timeout=120s
+          kubectl -n devsecops get deploy,svc,hpa,pod -o wide
